@@ -1,5 +1,6 @@
 #include "ML_modules.hpp"
 
+#include "dsp/digital.hpp"
 
 struct ShiftRegister : Module {
 	enum ParamIds {
@@ -34,15 +35,10 @@ struct ShiftRegister : Module {
 		NUM_OUTPUTS
 	};
 
-#ifdef v032
-	ShiftRegister() ;
-#endif
-#ifdef v040
 	ShiftRegister() : Module( NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS ) {};
-#endif
 
 
-	void step();
+	void step() override;
 
 	int position=0;
 
@@ -51,7 +47,13 @@ struct ShiftRegister : Module {
 
 	SchmittTrigger upTrigger, downTrigger, setTrigger;
 
-	void initialize(){
+#ifdef v_dev
+	void reset() override {
+#endif
+
+#ifdef v040
+	void initialize() override {
+#endif
 		position=0;
 		for(int i=0; i<8; i++) {
 			stepLights[i] = 0.0;
@@ -61,36 +63,11 @@ struct ShiftRegister : Module {
 
 };
 
-#ifdef v032
-ShiftRegister::ShiftRegister() {
-	params.resize(NUM_PARAMS);
-	inputs.resize(NUM_INPUTS);
-	outputs.resize(NUM_OUTPUTS);
-};
-#endif
 
 
 
 void ShiftRegister::step() {
 
-
-#ifdef v032
-	if( inputs[TRIGGER_INPUT] ) {
-
-		if( setTrigger.process(*inputs[TRIGGER_INPUT]) ) {
-
-			for(int i=7; i>0; i--) values[i] = values[i-1];
-			values[0] = getf(inputs[IN_INPUT]);
-
-		};
-
-	};
-
-	for(int i=0; i<8; i++) setf(outputs[OUT1_OUTPUT+i],values[i]);
-#endif
-
-
-#ifdef v040
 	if( inputs[TRIGGER_INPUT].active ) {
 
 		if( setTrigger.process(inputs[TRIGGER_INPUT].value) ) {
@@ -103,8 +80,6 @@ void ShiftRegister::step() {
 	};
 
 	for(int i=0; i<8; i++) outputs[OUT1_OUTPUT+i].value = values[i];
-#endif
-
 };
 
 
@@ -118,12 +93,7 @@ ShiftRegisterWidget::ShiftRegisterWidget() {
 	{
 		SVGPanel *panel = new SVGPanel();
 		panel->box.size = box.size;
-#ifdef v032
-		panel->setBackground(SVG::load("plugins/ML_modules/res/ShiftReg.svg"));
-#endif
-#ifdef v040
 		panel->setBackground(SVG::load(assetPlugin(plugin,"res/ShiftReg.svg")));
-#endif
 
 		addChild(panel);
 	}
@@ -133,8 +103,6 @@ ShiftRegisterWidget::ShiftRegisterWidget() {
 
 
 
-	//addInput(createInput<PJ301MPort>(Vec(30, 250),    module, SeqSwitch::TRIGUP_INPUT));
-	//addInput(createInput<PJ301MPort>(Vec(65, 250),    module, SeqSwitch::TRIGDN_INPUT));
 
 	const float offset_y = 140, delta_y = 26, offset_x=12;
 
@@ -146,7 +114,6 @@ ShiftRegisterWidget::ShiftRegisterWidget() {
 
 
 	addInput(createInput<PJ301MPort>(Vec(offset_x+17, 58), module, ShiftRegister::IN_INPUT));
-
 	addInput(createInput<PJ301MPort>(Vec(offset_x+17, 94), module, ShiftRegister::TRIGGER_INPUT));
 
 }

@@ -3,9 +3,7 @@
 
 using namespace rack;
 
-#ifdef v040
 extern Plugin *plugin;
-#endif
 
 ////////////////////
 // module widgets
@@ -17,8 +15,8 @@ struct QuantizerWidget : ModuleWidget {
 
 struct QuantumWidget : ModuleWidget {
 	QuantumWidget();
-	json_t *toJsonData();
-	void fromJsonData(json_t *root);
+	json_t *toJsonData() ;
+	void fromJsonData(json_t *root) ;
 };
 
 struct TrigBufWidget : ModuleWidget {
@@ -27,13 +25,46 @@ struct TrigBufWidget : ModuleWidget {
 
 struct SeqSwitchWidget : ModuleWidget {
 	SeqSwitchWidget();
+	json_t *toJsonData() ;
+	void fromJsonData(json_t *root) ;
+	Menu *createContextMenu() override;
+};
+
+struct SeqSwitch2Widget : ModuleWidget {
+	SeqSwitch2Widget();
+	json_t *toJsonData() ;
+	void fromJsonData(json_t *root) ;
+	Menu *createContextMenu() override;
 };
 
 struct ShiftRegisterWidget : ModuleWidget {
 	ShiftRegisterWidget();
 };
 
-struct TestWidget : ModuleWidget {
-	TestWidget();
+struct FreeVerbWidget : ModuleWidget {
+	FreeVerbWidget();
 };
 
+struct Sum8Widget : ModuleWidget {
+	Sum8Widget();
+};
+
+struct ConstantsWidget : ModuleWidget {
+	ConstantsWidget();
+};
+
+struct CounterWidget : ModuleWidget {
+	CounterWidget();
+};
+
+struct TrigDelayWidget : ModuleWidget {
+	TrigDelayWidget();
+};
+
+struct BPMdetectWidget : ModuleWidget {
+	BPMdetectWidget();
+};
+
+struct VoltMeterWidget : ModuleWidget {
+	VoltMeterWidget();
+};

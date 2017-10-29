@@ -1,5 +1,6 @@
 #include "ML_modules.hpp"
 
+#include "dsp/digital.hpp"
 
 struct SeqSwitch : Module {
 	enum ParamIds {
@@ -35,78 +36,79 @@ struct SeqSwitch : Module {
 		NUM_OUTPUTS
 	};
 
-#ifdef v032
-	SeqSwitch() ;
-#endif
-#ifdef v040
 	SeqSwitch() : Module( NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS ) {};
-#endif
-	void step();
+	void step() override;
 
 	int position=0;
 
 	float stepLights[8] = {};
 
+
+        const float in_min[4] = {0.0, 0.0, 0.0, -5.0};
+        const float in_max[4] = {8.0, 6.0, 10.0, 5.0};
+
+
 	SchmittTrigger upTrigger, downTrigger, resetTrigger, stepTriggers[8];
 
-	void initialize(){
+	enum InputRange {
+                Zero_Eight,
+		Zero_Six,
+                Zero_Ten,
+                MinusFive_Five
+        };
+
+
+        json_t *toJson() override {
+
+                json_t *rootJ = json_object();
+
+                // outMode:
+
+                json_object_set_new(rootJ, "inputRange", json_integer(inputRange));
+
+                return rootJ;
+        };
+
+        void fromJson(json_t *rootJ) override {
+
+                // outMode:
+
+                json_t *inputRangeJ = json_object_get(rootJ, "inputRange");
+                if(inputRangeJ) inputRange = (InputRange) json_integer_value(inputRangeJ);
+        };
+
+
+        InputRange inputRange = Zero_Eight;
+
+#ifdef v_dev
+	void reset() override {
+#endif
+
+#ifdef v040
+	void initialize() override {
+#endif
 		position=0;
 		for(int i=0; i<8; i++) stepLights[i] = 0.0;
 	};
 
 };
 
-#ifdef v032
-SeqSwitch::SeqSwitch() {
-	params.resize(NUM_PARAMS);
-	inputs.resize(NUM_INPUTS);
-	outputs.resize(NUM_OUTPUTS);
-};
-#endif
-
-
 
 void SeqSwitch::step() {
 
 	float out=0.0;
 
-#ifdef v032
-	int numSteps = round(clampf(params[NUM_STEPS],1.0,8.0));
-	if( inputs[NUMSTEPS_INPUT] ) numSteps = round(clampf(getf(inputs[NUMSTEPS_INPUT]),1.0,8.0));
-
-#endif
-
-#ifdef v040
 	int numSteps = round(clampf(params[NUM_STEPS].value,1.0,8.0));
 	if( inputs[NUMSTEPS_INPUT].active ) numSteps = round(clampf(inputs[NUMSTEPS_INPUT].value,1.0,8.0));
-#endif
 
-#ifdef v032
-	if( inputs[POS_INPUT] ) {
-
-		position = round( clampf( getf(inputs[POS_INPUT]),0.0,8.0))/8.0 * (numSteps-1) ; 
-
-	} else {
-
-		if( inputs[TRIGUP_INPUT] ) {
-			if (upTrigger.process(*inputs[TRIGUP_INPUT]) ) position++;
-		}
-
-		if( inputs[TRIGDN_INPUT] ) {
-			if (downTrigger.process(*inputs[TRIGDN_INPUT]) ) position--;
-		}
-
-		if( inputs[RESET_INPUT] ) {
-			if (resetTrigger.process(*inputs[RESET_INPUT]) ) position = 0;
-		}
-
-	};
-#endif
-
-#ifdef v040
 	if( inputs[POS_INPUT].active ) {
 
-		position = round( clampf( inputs[POS_INPUT].value,0.0,8.0))/8.0 * (numSteps-1) ; 
+//		position = round( clampf( inputs[POS_INPUT].value,0.0,8.0))/8.0 * (numSteps-1) ; 
+
+                float in_value = clampf( inputs[POS_INPUT].value,in_min[inputRange],in_max[inputRange] );
+
+                position = round( rescalef( in_value, in_min[inputRange], in_max[inputRange], 0, numSteps-1 ) );
+
 
 	} else {
 
@@ -123,45 +125,79 @@ void SeqSwitch::step() {
 		}
 
 	};
-#endif
 
 
 	for(int i=0; i<numSteps; i++) {
-#ifdef v032
-		if( stepTriggers[i].process(params[STEP1_PARAM+i])) position = i;
-#endif
-#ifdef v040
 		if( stepTriggers[i].process(params[STEP1_PARAM+i].value)) position = i;
-#endif
 
 	};
 
 	while( position < 0 )         position += numSteps;
 	while( position >= numSteps ) position -= numSteps;
 
-#ifdef v032
-	if( inputs[IN1_INPUT+position] ) {
-		out = getf(inputs[IN1_INPUT+position]);
-	} else {
-		out = 0.0;
-	};
-#endif
-
-#ifdef v040
 	out = inputs[IN1_INPUT+position].normalize(0.0);
-#endif
 
 	for(int i=0; i<8; i++) stepLights[i] = (i==position)?1.0:0.0;
 
-#ifdef v032
-	setf(outputs[OUT1_OUTPUT],out);
-#endif
 
-#ifdef v040
 	outputs[OUT1_OUTPUT].value = out;
-#endif
 };
 
+struct SeqSwitchRangeItem : MenuItem {
+
+        SeqSwitch *seqSwitch;
+        SeqSwitch::InputRange inputRange;
+
+        void onAction() override {
+                seqSwitch->inputRange = inputRange;
+        };
+
+        void step() override {
+                rightText = (seqSwitch->inputRange == inputRange)? "✔" : "";
+        };
+
+};
+
+Menu *SeqSwitchWidget::createContextMenu() {
+
+        Menu *menu = ModuleWidget::createContextMenu();
+
+        MenuLabel *spacerLabel = new MenuLabel();
+        menu->pushChild(spacerLabel);
+
+        SeqSwitch *seqSwitch = dynamic_cast<SeqSwitch*>(module);
+        assert(seqSwitch);
+
+        MenuLabel *modeLabel2 = new MenuLabel();
+        modeLabel2->text = "Input Range";
+        menu->pushChild(modeLabel2);
+
+        SeqSwitchRangeItem *zeroEightItem = new SeqSwitchRangeItem();
+        zeroEightItem->text = "0 - 8V";
+        zeroEightItem->seqSwitch = seqSwitch;
+        zeroEightItem->inputRange = SeqSwitch::Zero_Eight;
+        menu->pushChild(zeroEightItem);
+
+        SeqSwitchRangeItem *zeroSixItem = new SeqSwitchRangeItem();
+        zeroSixItem->text = "0 - 6V";
+        zeroSixItem->seqSwitch = seqSwitch;
+        zeroSixItem->inputRange = SeqSwitch::Zero_Six;
+        menu->pushChild(zeroSixItem);
+
+        SeqSwitchRangeItem *zeroTenItem = new SeqSwitchRangeItem();
+        zeroTenItem->text = "0 - 10V";
+        zeroTenItem->seqSwitch = seqSwitch;
+        zeroTenItem->inputRange = SeqSwitch::Zero_Ten;
+        menu->pushChild(zeroTenItem);
+
+        SeqSwitchRangeItem *fiveFiveItem = new SeqSwitchRangeItem();
+        fiveFiveItem->text = "-5 - 5V";
+        fiveFiveItem->seqSwitch = seqSwitch;
+        fiveFiveItem->inputRange = SeqSwitch::MinusFive_Five;;
+        menu->pushChild(fiveFiveItem);
+
+        return menu;
+};
 
 
 SeqSwitchWidget::SeqSwitchWidget() {
@@ -173,12 +209,7 @@ SeqSwitchWidget::SeqSwitchWidget() {
 	{
 		SVGPanel *panel = new SVGPanel();
 		panel->box.size = box.size;
-#ifdef v032		
-		panel->setBackground(SVG::load("plugins/ML_modules/res/SeqSwitch.svg"));
-#endif
-#ifdef v040
 		panel->setBackground(SVG::load(assetPlugin(plugin,"res/SeqSwitch.svg")));
-#endif
 		addChild(panel);
 	}
 

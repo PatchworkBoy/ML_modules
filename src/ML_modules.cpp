@@ -1,29 +1,9 @@
 #include "ML_modules.hpp"
 #include <math.h>
-#include "dsp.hpp"
-
 
 Plugin *plugin;
 
-#ifdef V032
-struct ML_modulesPlugin : Plugin {
-	ML_modulesPlugin() {
-		slug = "ML_Modules";
-		name = "ML Modules";
-		createModel<QuantizerWidget>(this, "Quantizer", "Quantizer (h-bar)");
-		createModel<QuantumWidget>(this, "Quantum", "Quantum");
-		createModel<TrigBufWidget>(this, "TrigBuf", "Trigger Buffer");
-		createModel<SeqSwitchWidget>(this, "SeqSwitch", "Sequential Switch");
-		createModel<ShiftRegisterWidget>(this, "ShiftRegister", "Shift Register");
-	}
-};
 
-Plugin* init() {
-	return new ML_modulesPlugin();
-};
-#endif
-
-#ifdef v040
 
 void init(rack::Plugin *p) {
  	plugin = p;
@@ -34,12 +14,19 @@ void init(rack::Plugin *p) {
  	createModel<QuantizerWidget>(plugin, "Quantizer", "Quantizer (h-bar)");
  	createModel<QuantumWidget>(plugin, "Quantum", "Quantum");
  	createModel<TrigBufWidget>(plugin, "TrigBuf", "Trigger Buffer");
-	createModel<SeqSwitchWidget>(plugin, "SeqSwitch", "Sequential Switch");
+	createModel<SeqSwitchWidget>(plugin, "SeqSwitch", "Sequential Switch 8->1");
+	createModel<SeqSwitch2Widget>(plugin, "SeqSwitch2", "Sequential Switch 1->8");
 	createModel<ShiftRegisterWidget>(plugin, "ShiftRegister", "Shift Register");
+	createModel<FreeVerbWidget>(plugin, "FreeVerb", "FreeVerb");
+	createModel<Sum8Widget>(plugin, "Sum8", "Sum8");
+	createModel<ConstantsWidget>(plugin, "Constants", "Constants");
+	createModel<CounterWidget>(plugin, "Counter", "Counter");
+	createModel<TrigDelayWidget>(plugin, "TrigDelay", "Trigger Delay");
+	createModel<BPMdetectWidget>(plugin, "BPMdetect", "BPM Detect");
+	createModel<VoltMeterWidget>(plugin, "VoltMeter", "Volt Meter");
 
  }
 
-#endif
 
 
 
